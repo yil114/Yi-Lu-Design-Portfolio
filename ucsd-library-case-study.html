@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yi Lu | UCSD Library Case Study</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+
+        body {
+            background-color: #ffffff;
+            font-family: 'Inter', sans-serif;
+            color: #1a1a1a;
+            -webkit-font-smoothing: antialiased;
+            scroll-behavior: smooth;
+            cursor: none;
+        }
+
+        /* Custom cursor */
+        #cursor {
+            width: 10px; height: 10px;
+            background: #1a1a1a;
+            border-radius: 50%;
+            position: fixed;
+            top: 0; left: 0;
+            pointer-events: none;
+            z-index: 9999;
+            transform: translate(-50%, -50%);
+            transition: width 0.25s, height 0.25s, opacity 0.25s;
+        }
+        #cursor-ring {
+            width: 36px; height: 36px;
+            border: 1px solid rgba(26,26,26,0.25);
+            border-radius: 50%;
+            position: fixed;
+            top: 0; left: 0;
+            pointer-events: none;
+            z-index: 9998;
+            transform: translate(-50%, -50%);
+            transition: width 0.4s cubic-bezier(.23,1,.32,1), height 0.4s cubic-bezier(.23,1,.32,1);
+        }
+        body.cursor-hover #cursor { width: 5px; height: 5px; opacity: 0.4; }
+        body.cursor-hover #cursor-ring { width: 54px; height: 54px; border-color: rgba(26,26,26,0.12); }
+
+        /* Page load */
+        .page-wrapper {
+            opacity: 0;
+            animation: pageFadeIn 0.7s ease forwards 0.05s;
+        }
+        @keyframes pageFadeIn { to { opacity: 1; } }
+
+        /* Scroll reveal */
+        .reveal {
+            opacity: 0;
+            transform: translateY(24px);
+            transition: opacity 0.65s cubic-bezier(.23,1,.32,1), transform 0.65s cubic-bezier(.23,1,.32,1);
+        }
+        .reveal.visible { opacity: 1; transform: translateY(0); }
+
+        /* Scroll progress bar */
+        #scroll-progress {
+            position: fixed;
+            top: 0; left: 0;
+            height: 2px;
+            background: #1a1a1a;
+            z-index: 9997;
+            width: 0%;
+            transition: width 0.08s linear;
+        }
+
+        /* Nav */
+        .nav-link {
+            display: block;
+            border-left: 1px solid transparent;
+            padding-left: 0;
+            transition: color 0.2s, border-color 0.2s, padding-left 0.2s;
+        }
+        .nav-link:hover, .nav-link.active {
+            color: #1a1a1a;
+            border-left-color: #1a1a1a;
+            padding-left: 12px;
+        }
+        .nav-link.active { font-weight: 500; }
+
+        .content-section { margin-bottom: 100px; }
+
+        /* Tags */
+        .tag-pill {
+            font-size: 9px;
+            color: #6b7280;
+            border: 1px solid #e5e7eb;
+            padding: 4px 12px;
+            border-radius: 999px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            transition: border-color 0.2s, color 0.2s;
+        }
+        .tag-pill:hover { border-color: #1a1a1a; color: #1a1a1a; }
+
+        /* Images */
+        .img-wrapper { position: relative; overflow: hidden; width: 100%; }
+        .img-wrapper img {
+            width: 100%;
+            height: auto;
+            display: block;
+            object-fit: contain;
+            transition: transform 0.6s cubic-bezier(.23,1,.32,1);
+        }
+        .img-wrapper:hover img { transform: scale(1.012); }
+        .img-caption {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 100%);
+            color: #fff;
+            font-size: 11px;
+            letter-spacing: 0.06em;
+            padding: 28px 16px 14px;
+            opacity: 0;
+            transform: translateY(6px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            pointer-events: none;
+        }
+        .img-wrapper:hover .img-caption { opacity: 1; transform: translateY(0); }
+
+        /* Section label */
+        .section-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: #9ca3af;
+            margin-bottom: 32px;
+            display: block;
+        }
+
+        /* Context label (small caps above heading) */
+        .context-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.25em;
+            color: #c4c9d4;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        /* HMW */
+        .hmw-box {
+            background: #1a1a1a;
+            color: #fff;
+            border-radius: 16px;
+            padding: 44px 40px;
+            margin: 40px 0;
+        }
+
+        /* Callout */
+        .callout-box {
+            background: #f8f9fa;
+            border-left: 2px solid #1a1a1a;
+            padding: 24px 28px;
+            border-radius: 0 12px 12px 0;
+        }
+
+        /* Change block */
+        .change-block {
+            border-top: 1px solid #e5e7eb;
+            padding-top: 40px;
+            margin-bottom: 64px;
+            transition: border-color 0.3s;
+        }
+        .change-block:hover { border-color: #1a1a1a; }
+
+        .change-number {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.22em;
+            color: #c4c9d4;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        /* Research step badges */
+        .step-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 10px;
+            color: #6b7280;
+            border: 1px solid #e5e7eb;
+            border-radius: 999px;
+            padding: 5px 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            white-space: nowrap;
+        }
+        .step-badge .dot {
+            width: 5px; height: 5px;
+            background: #d1d5db;
+            border-radius: 50%;
+        }
+
+        /* Back link */
+        .back-link {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            color: #9ca3af;
+            text-decoration: none;
+            margin-bottom: 80px;
+            transition: color 0.2s, gap 0.25s;
+        }
+        .back-link svg { transition: transform 0.25s ease; }
+        .back-link:hover { color: #1a1a1a; gap: 8px; }
+        .back-link:hover svg { transform: translateX(-4px); }
+
+        /* Footer */
+        .footer-link {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.3em;
+            color: #9ca3af;
+            text-decoration: none;
+            transition: color 0.2s, letter-spacing 0.3s;
+        }
+        .footer-link:hover { color: #1a1a1a; letter-spacing: 0.42em; }
+
+        /* Stat */
+        .stat-block {
+            border-top: 1px solid #e5e7eb;
+            padding-top: 28px;
+            transition: border-color 0.3s;
+        }
+        .stat-block:hover { border-color: #1a1a1a; }
+        .stat-number {
+            font-size: 2.75rem;
+            font-weight: 300;
+            line-height: 1;
+        }
+
+        @media (max-width: 768px) { .stat-number { font-size: 2rem; } }
+    </style>
+</head>
+<body>
+    <div id="cursor"></div>
+    <div id="cursor-ring"></div>
+    <div id="scroll-progress"></div>
+    <div id="root"></div>
+
+    <script type="text/babel">
+    const { useEffect, useRef, useState } = React;
+
+    /* Scroll-reveal wrapper */
+    function Reveal({ children, delay = 0, className = '' }) {
+        const ref = useRef(null);
+        useEffect(() => {
+            const obs = new IntersectionObserver(([e]) => {
+                if (e.isIntersecting) { e.target.classList.add('visible'); obs.disconnect(); }
+            }, { threshold: 0.07 });
+            if (ref.current) obs.observe(ref.current);
+            return () => obs.disconnect();
+        }, []);
+        return (
+            <div ref={ref} className={`reveal ${className}`} style={{ transitionDelay: `${delay}s` }}>
+                {children}
+            </div>
+        );
+    }
+
+    /* Animated counter */
+    function useCounter(target, duration, active) {
+        const [val, setVal] = useState(0);
+        const started = useRef(false);
+        useEffect(() => {
+            if (!active || started.current) return;
+            started.current = true;
+            const numeric = parseFloat(String(target).replace(/[^0-9.]/g, ''));
+            const t0 = performance.now();
+            const tick = now => {
+                const p = Math.min((now - t0) / duration, 1);
+                const ease = 1 - Math.pow(1 - p, 3);
+                setVal(Math.round(ease * numeric));
+                if (p < 1) requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+        }, [active]);
+        return val;
+    }
+
+    function StatCard({ value, suffix = '', label, description, delay = 0 }) {
+        const ref = useRef(null);
+        const [active, setActive] = useState(false);
+        const count = useCounter(value, 1400, active);
+        useEffect(() => {
+            const obs = new IntersectionObserver(([e]) => {
+                if (e.isIntersecting) { setActive(true); obs.disconnect(); }
+            }, { threshold: 0.4 });
+            if (ref.current) obs.observe(ref.current);
+            return () => obs.disconnect();
+        }, []);
+        return (
+            <div ref={ref} className="stat-block reveal" style={{ transitionDelay: `${delay}s` }}>
+                <p className="stat-number">{active ? count : 0}{suffix}</p>
+                <p className="text-xs uppercase tracking-widest text-gray-400 mt-3 mb-2">{label}</p>
+                <p className="text-xs text-gray-500 font-light leading-relaxed">{description}</p>
+            </div>
+        );
+    }
+
+    /* Image with hover caption */
+    function CaseImg({ src, alt, caption }) {
+        return (
+            <div className="img-wrapper">
+                <img src={src} alt={alt} />
+                {caption && <div className="img-caption">{caption}</div>}
+            </div>
+        );
+    }
+
+    function CaseStudyPage() {
+        const [activeSection, setActiveSection] = useState('overview');
+
+        const navItems = [
+            { label: "Overview",       id: "overview" },
+            { label: "Problem",        id: "problem" },
+            { label: "User Research",  id: "user-research" },
+            { label: "Ideation",       id: "ideation" },
+            { label: "Design System",  id: "design-system" },
+            { label: "Design Changes", id: "design-changes" },
+        ];
+
+        const tags = ["UX Design", "Accessibility", "User Research", "Redesign"];
+
+        const base = "https://images.squarespace-cdn.com/content/v1/68d5a437b484267b9999188c/";
+        const img = {
+            hero:          base + "ab55af71-74dc-4318-8849-e15fa44026f5/UC+San+Diego+Library+Case+Study.png",
+            oldDesign:     base + "dc5765c3-2c67-41af-95b3-8eefc94b20fa/UC+San+Diego+Library+OLD+DESIGN.png",
+            usabilityTest: base + "bddf8d95-6ed6-48e6-84a2-91d83b59f466/Usability+testing+in+the+library.png",
+            interviews:    base + "77961811-aab1-4e32-8a9d-297b71057aa2/User+Interview+Insights.png",
+            pillars:       base + "03a5acd2-cb59-42f3-9a2a-b4e0c4e5d052/opportunity_pillars+1.png",
+            crazy8s:       base + "560a911f-52be-4d9d-a545-03980949d478/crazy+8s.png",
+            designSystem:  base + "4040ead5-d111-4c5e-9b01-f1f7ad0e2979/ucsd_design_system.png",
+            change1:       base + "b40f4bcb-e0e9-4f14-b559-c443dc7976fc/CHANGE+1+-+SEO+Ttile.png",
+            change2:       base + "29d5f3e6-c594-4dc7-bb6f-39d505a3a306/CHANGE+2+-+SEARCH.png",
+            change3:       base + "f4825c7d-dcf5-45f0-a7da-551a18af766a/CHANGE+3+-+Accessibility.png",
+        };
+
+        /* Active nav + scroll bar */
+        useEffect(() => {
+            const ids = navItems.map(n => n.id);
+            const onScroll = () => {
+                const doc = document.documentElement;
+                const pct = doc.scrollTop / (doc.scrollHeight - doc.clientHeight);
+                const bar = document.getElementById('scroll-progress');
+                if (bar) bar.style.width = (pct * 100) + '%';
+                let cur = ids[0];
+                ids.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el && window.scrollY >= el.offsetTop - 180) cur = id;
+                });
+                setActiveSection(cur);
+            };
+            window.addEventListener('scroll', onScroll, { passive: true });
+            return () => window.removeEventListener('scroll', onScroll);
+        }, []);
+
+        /* Custom cursor */
+        useEffect(() => {
+            const dot  = document.getElementById('cursor');
+            const ring = document.getElementById('cursor-ring');
+            const onMove = e => {
+                dot.style.left  = e.clientX + 'px';
+                dot.style.top   = e.clientY + 'px';
+                ring.style.left = e.clientX + 'px';
+                ring.style.top  = e.clientY + 'px';
+            };
+            const onOver = e => { if (e.target.closest('a,button,img')) document.body.classList.add('cursor-hover'); };
+            const onOut  = e => { if (e.target.closest('a,button,img')) document.body.classList.remove('cursor-hover'); };
+            window.addEventListener('mousemove', onMove);
+            window.addEventListener('mouseover', onOver);
+            window.addEventListener('mouseout',  onOut);
+            return () => {
+                window.removeEventListener('mousemove', onMove);
+                window.removeEventListener('mouseover', onOver);
+                window.removeEventListener('mouseout',  onOut);
+            };
+        }, []);
+
+        return (
+            <div className="page-wrapper min-h-screen">
+                <div className="flex px-8 py-12 md:px-16 md:py-20 lg:px-24">
+
+                    {/* Sidebar */}
+                    <aside className="w-[200px] hidden md:block flex-shrink-0 sticky top-12 h-fit pr-10">
+                        <nav>
+                            <a href="/index.html"
+                               onClick={e => { e.preventDefault(); window.location.href = 'index.html'; }}
+                               className="back-link">
+                                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                </svg>
+                                Back to projects 
+                            </a>
+                            <div className="mb-16">
+                                <span className="text-xs uppercase text-gray-400 tracking-[0.1em]">Collaborative Project</span>
+                                <h1 className="text-lg font-medium text-black mt-1">UCSD Library</h1>
+                            </div>
+                            <ul className="space-y-6">
+                                {navItems.map(item => (
+                                    <li key={item.id}>
+                                        <a href={`#${item.id}`}
+                                           className={`nav-link text-[10px] tracking-[0.12em] uppercase text-gray-400 ${activeSection === item.id ? 'active' : ''}`}>
+                                            {item.label}
+                                        </a>
+                                    </li>
+                                ))}
+                            </ul>
+                        </nav>
+                    </aside>
+
+                    {/* Main */}
+                    <main className="flex-grow min-w-0">
+
+                        {/* Header */}
+                        <header className="mb-16">
+                            <Reveal>
+                                <div className="flex flex-col md:flex-row md:items-start justify-between gap-8">
+                                    <div>
+                                        <h2 className="text-4xl md:text-5xl font-medium text-black tracking-tight uppercase leading-tight">
+                                            UC San Diego Library A–Z Webpage Redesign
+                                        </h2>
+                                        <p className="text-lg text-gray-600 mt-6 leading-relaxed font-light italic">
+                                            Redesigning a critical student research entry point to minimize cognitive overload and enhance accessibility for all users.
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-wrap md:flex-col items-start md:items-end gap-3 flex-shrink-0">
+                                        <div className="flex flex-wrap justify-end gap-2">
+                                            {tags.map((t, i) => <span key={i} className="tag-pill">{t}</span>)}
+                                        </div>
+                                        <span className="text-[10px] text-gray-400 tracking-[0.2em] uppercase">Collaborative • Spring 2023</span>
+                                    </div>
+                                </div>
+                            </Reveal>
+                        </header>
+
+                        {/* Overview */}
+                        <section id="overview" className="content-section">
+                            <Reveal>
+                                <CaseImg src={img.hero} alt="UCSD Library Case Study" caption="UC San Diego Library A–Z Webpage Redesign" />
+                            </Reveal>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mt-16">
+                                {[
+                                    { label: "The Role",    text: "UX Designer & Researcher — Collaborative project with UC San Diego Library" },
+                                    { label: "The Context", text: "The Library's 'Subjects A-Z' page lists databases, newspapers, encyclopedias, e-books, and more, organized by subject area." },
+                                    { label: "Focus",       bold: "Minimize cognitive overload & enhance accessibility for all users." },
+                                ].map((col, i) => (
+                                    <Reveal key={i} delay={i * 0.1}>
+                                        <h4 className="text-xs uppercase tracking-widest text-gray-400 mb-4">{col.label}</h4>
+                                        {col.bold
+                                            ? <p className="text-sm font-semibold text-black">{col.bold}</p>
+                                            : <p className="text-sm font-light text-gray-800">{col.text}</p>
+                                        }
+                                    </Reveal>
+                                ))}
+                            </div>
+
+                            {/* Stats */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mt-16">
+                                <StatCard value={10} label="User Interviews" description="Conducted with students to understand real navigation pain points on the A-Z page." delay={0} />
+                                <StatCard value={3} suffix=" themes" label="Key Themes" description="Synthesized from interviews and the accessibility audit across all research findings." delay={0.12} />
+                                <StatCard value={4} label="Browsing Paths" description="Distinct navigation modes introduced: By Subject, By Class, All Guides, and Quick Find." delay={0.24} />
+                            </div>
+                        </section>
+
+                        {/* Problem */}
+                        <section id="problem" className="content-section">
+                            <Reveal><span className="section-label">01. The Problem</span></Reveal>
+                            <Reveal delay={0.05}>
+                                <span className="context-label">Context</span>
+                                <h2 className="text-2xl font-light mb-6">The UCSD Library's "Subjects A-Z" webpage is a critical entry point for student research.</h2>
+                                <p className="text-gray-600 leading-relaxed font-light text-base mb-10 max-w-2xl">
+                                    This page lists databases, newspapers, encyclopedias, e-books, and more, organized by subject area. But the existing design was creating friction at every step.
+                                </p>
+                            </Reveal>
+
+                            <Reveal delay={0.05}>
+                                <CaseImg src={img.oldDesign} alt="UCSD Library Old Design" caption="The original A-Z webpage — dense, unstructured, hard to navigate" />
+                            </Reveal>
+
+                            <Reveal delay={0.1} className="mt-16">
+                                <div className="hmw-box">
+                                    <span className="context-label">Problem Statement</span>
+                                    <p className="text-xl md:text-2xl font-light leading-relaxed">
+                                        How might we redesign the A-Z webpage to minimize cognitive overload and enhance accessibility for all users?
+                                    </p>
+                                </div>
+                            </Reveal>
+                        </section>
+
+                        {/* User Research */}
+                        <section id="user-research" className="content-section">
+                            <Reveal><span className="section-label">02. User Research</span></Reveal>
+                            <Reveal delay={0.05}>
+                                <span className="context-label">User Research</span>
+                                <h2 className="text-2xl font-light mb-6">What exactly are the problems users facing?</h2>
+                                <p className="text-gray-600 leading-relaxed font-light text-base mb-8 max-w-2xl">
+                                    We started by talking to users to do usability testing and understand their current struggles.
+                                </p>
+                            </Reveal>
+
+                            <Reveal delay={0.1}>
+                                <div className="flex flex-wrap gap-3 mb-12">
+                                    {["User Interview", "Heat Map Analysis", "Userway WCAG Analysis"].map((step, i) => (
+                                        <span key={i} className="step-badge">
+                                            <span className="dot"></span>
+                                            {step}
+                                        </span>
+                                    ))}
+                                </div>
+                            </Reveal>
+
+                            <Reveal delay={0.05}>
+                                <span className="context-label">Analyze</span>
+                                <h3 className="text-base font-medium text-black mb-6">What are something we found through user interviews?</h3>
+                            </Reveal>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                                <Reveal delay={0.05}>
+                                    <CaseImg src={img.usabilityTest} alt="Usability testing in the library" caption="Usability testing sessions in the UCSD library" />
+                                </Reveal>
+                                <Reveal delay={0.15}>
+                                    <CaseImg src={img.interviews} alt="User Interview Insights" caption="Key insights surfaced from 10 user interviews" />
+                                </Reveal>
+                            </div>
+
+                            <Reveal delay={0.05} className="mt-16">
+                                <span className="context-label">Problem</span>
+                                <h3 className="text-base font-medium text-black mb-6">What are the problems?</h3>
+                                <p className="text-sm font-light text-gray-600 leading-relaxed mb-8 max-w-2xl">
+                                    Synthesizing research across <strong className="font-medium text-black">10 interviews</strong> and the accessibility audit, three clear themes emerged:
+                                </p>
+                            </Reveal>
+                            <Reveal delay={0.1}>
+                                <CaseImg src={img.pillars} alt="Opportunity pillars" caption="Three opportunity pillars synthesized from research" />
+                            </Reveal>
+                        </section>
+
+                        {/* Ideation */}
+                        <section id="ideation" className="content-section">
+                            <Reveal><span className="section-label">03. Ideation</span></Reveal>
+                            <Reveal delay={0.05}>
+                                <span className="context-label">Ideate</span>
+                                <h2 className="text-2xl font-light mb-6">Crazy 8s: Design brainstorming</h2>
+                                <p className="text-gray-600 leading-relaxed font-light text-base mb-10 max-w-2xl">
+                                    I ran a Crazy Eights exercise with the team to rapidly generate layout concepts. This time-boxed technique pushed us past obvious solutions and surfaced unexpected directions we could explore.
+                                </p>
+                            </Reveal>
+                            <Reveal delay={0.05}>
+                                <CaseImg src={img.crazy8s} alt="Crazy 8s brainstorming" caption="Crazy 8s sketches — 8 concepts in 8 minutes" />
+                            </Reveal>
+                        </section>
+
+                        {/* Design System */}
+                        <section id="design-system" className="content-section">
+                            <Reveal><span className="section-label">04. Design System</span></Reveal>
+                            <Reveal delay={0.05}>
+                                <h2 className="text-2xl font-light mb-10">Building a consistent visual language.</h2>
+                            </Reveal>
+                            <Reveal delay={0.1}>
+                                <CaseImg src={img.designSystem} alt="UCSD Design System" caption="Design system — tokens, components, and accessibility-first color palette" />
+                            </Reveal>
+                        </section>
+
+                        {/* Design Changes */}
+                        <section id="design-changes" className="content-section">
+                            <Reveal><span className="section-label">05. Design Changes</span></Reveal>
+                            <Reveal delay={0.05}>
+                                <h2 className="text-2xl font-light mb-16">Three changes. One clearer experience.</h2>
+                            </Reveal>
+
+                            {/* Change 1 */}
+                            <Reveal delay={0.05}>
+                                <div className="change-block">
+                                    <span className="change-number">Design Change 01</span>
+                                    <h3 className="text-lg font-light text-black mb-4">Recreate SEO Title</h3>
+                                    <p className="text-sm font-light text-gray-600 leading-relaxed mb-8 max-w-2xl">
+                                        I replaced the vague title with <strong className="font-medium text-black">"A-Z Database List"</strong> and added a structured, descriptive subtitle. This change directly addressed discoverability (Google indexing) and the screen reader skimming problem.
+                                    </p>
+                                    <CaseImg src={img.change1} alt="Design Change 1 - SEO Title" caption="Before → After: clearer, indexable page title" />
+                                </div>
+                            </Reveal>
+
+                            {/* Change 2 */}
+                            <Reveal delay={0.05}>
+                                <div className="change-block">
+                                    <span className="change-number">Design Change 02</span>
+                                    <h3 className="text-lg font-light text-black mb-4">Rethink the Webpage Layout</h3>
+                                    <p className="text-sm font-light text-gray-600 leading-relaxed mb-8 max-w-2xl">
+                                        Users have different mental models when navigating — some browse by subject, others by class, others want to see everything. I introduced <strong className="font-medium text-black">4 distinct browsing paths</strong>: By Subjects, By Classes, All Guides, and a Quick Find sidebar.
+                                    </p>
+                                    <div className="flex flex-wrap gap-3 mb-8">
+                                        {["By Subjects", "By Classes", "All Guides", "Quick Find"].map((path, i) => (
+                                            <span key={i} className="step-badge">
+                                                <span className="dot"></span>
+                                                {path}
+                                            </span>
+                                        ))}
+                                    </div>
+                                    <CaseImg src={img.change2} alt="Design Change 2 - Layout" caption="4 browsing paths to match every mental model" />
+                                </div>
+                            </Reveal>
+
+                            {/* Change 3 */}
+                            <Reveal delay={0.05}>
+                                <div className="change-block">
+                                    <span className="change-number">Design Change 03</span>
+                                    <h3 className="text-lg font-light text-black mb-4">Reimagine Webpage Accessibility</h3>
+                                    <p className="text-sm font-light text-gray-600 leading-relaxed mb-8 max-w-2xl">
+                                        I recommended a content-first approach ensuring HTML heading hierarchy matched the visual structure, descriptive alt text for all images, and meaningful hyperlink text. I also specified color contrast ratios and delivered an <strong className="font-medium text-black">accessibility checklist</strong> to the development team for implementation.
+                                    </p>
+                                    <div className="callout-box mb-8">
+                                        <p className="text-sm font-light text-gray-600 leading-relaxed">
+                                            Every design decision was validated against <strong className="font-medium text-black">WCAG 2.1 AA</strong> standards — from heading hierarchy to color contrast ratios to screen reader compatibility.
+                                        </p>
+                                    </div>
+                                    <CaseImg src={img.change3} alt="Design Change 3 - Accessibility" caption="Accessibility-first: contrast, hierarchy, alt text, and semantic HTML" />
+                                </div>
+                            </Reveal>
+                        </section>
+
+                    </main>
+                </div>
+
+                {/* Footer */}
+                <footer className="border-t border-gray-100 py-20 px-8 flex flex-col items-center gap-4">
+                    <div className="flex gap-12">
+                        <a href="#" className="footer-link">← Previous: Volvo AI Smartwatch</a>
+                        <a href="#" className="footer-link">Next: Dexcom Research →</a>
+                    </div>
+                    <div className="flex gap-6 mt-6">
+                        <a href="https://www.linkedin.com/in/yi-lu-b014b31a7/" target="_blank" rel="noopener noreferrer"
+                           className="text-xs text-gray-400 hover:text-black transition-colors tracking-widest uppercase">LinkedIn</a>
+                        <a href="https://drive.google.com/file/d/1Ejc0vhzJfgfPCsqv5TCkkbdpEy7BgrJR/view?usp=sharing"
+                           target="_blank" rel="noopener noreferrer"
+                           className="text-xs text-gray-400 hover:text-black transition-colors tracking-widest uppercase">Resume</a>
+                    </div>
+                </footer>
+            </div>
+        );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<CaseStudyPage />);
+    </script>
+</body>
+</html>

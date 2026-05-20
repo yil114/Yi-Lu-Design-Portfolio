@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yi Lu | Interaction</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=JetBrains+Mono&display=swap');
+        
+        :root {
+            --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+            --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+        }
+
+        body { 
+            background-color: #fafafa; 
+            font-family: var(--font-sans);
+            color: #1a1a1a;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        #physics-hero {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            background: #fff;
+            touch-action: pan-y; 
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+    const { useEffect, useRef } = React;
+
+    function PuppetPhysicsHero() {
+        const sceneRef = useRef(null);
+        const mousePos = useRef({ x: 0, y: 0 });
+
+        useEffect(() => {
+            const { Engine, Render, Runner, Bodies, Composite, MouseConstraint, Mouse, Events } = Matter;
+            const engine = Engine.create();
+            const world = engine.world;
+            const width = sceneRef.current.clientWidth;
+            const height = sceneRef.current.clientHeight;
+
+            const render = Render.create({
+                element: sceneRef.current,
+                engine: engine,
+                options: {
+                    width: width, height: height, wireframes: false, background: 'transparent', pixelRatio: window.devicePixelRatio
+                }
+            });
+
+            const ground = Bodies.rectangle(width/2, height + 50, width, 100, { isStatic: true });
+            const leftWall = Bodies.rectangle(-50, height/2, 100, height, { isStatic: true });
+            const rightWall = Bodies.rectangle(width + 50, height/2, 100, height, { isStatic: true });
+
+            // Removed #FFFFFF to prevent white circles
+            const palette = ['#FF5F1F', '#5D3FD3', '#1A1A1A', '#FFBF00', '#F08080', '#90EE90'];
+            const traits = ['glasses', 'hair', 'squint', 'closed-smile', 'standard', 'sad', 'surprised', 'beret', 'blush', 'freckles'];
+
+            const bodies = Array.from({ length: 12 }).map((_, i) => {
+                const radius = 80 + Math.random() * 30;
+                return Bodies.circle(Math.random() * width, -Math.random() * 1500, radius, {
+                    restitution: 0.5, friction: 0.1,
+                    render: { fillStyle: palette[i % palette.length], trait: traits[i % traits.length] }
+                });
+            });
+
+            Composite.add(world, [ground, leftWall, rightWall, ...bodies]);
+
+            const onMouseMove = (e) => {
+                const rect = sceneRef.current.getBoundingClientRect();
+                mousePos.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+            };
+            window.addEventListener('mousemove', onMouseMove);
+
+            Events.on(render, 'afterRender', () => {
+                const ctx = render.context;
+                bodies.forEach(body => {
+                    const { x, y } = body.position;
+                    const r = body.circleRadius;
+                    const trait = body.render.trait;
+                    const isDark = body.render.fillStyle === '#1A1A1A' || body.render.fillStyle === '#5D3FD3';
+
+                    const dx = mousePos.current.x - x;
+                    const dy = mousePos.current.y - y;
+                    const angle = Math.atan2(dy, dx);
+                    
+                    const faceIntensity = Math.min(r * 0.3, Math.sqrt(dx*dx + dy*dy) / 12);
+                    const faceX = Math.cos(angle) * faceIntensity;
+                    const faceY = Math.sin(angle) * faceIntensity;
+
+                    const pupilX = Math.cos(angle) * (r * 0.08);
+                    const pupilY = Math.sin(angle) * (r * 0.08);
+
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(body.angle);
+                    
+                    // Draw Beret if applicable
+                    if (trait === 'beret') {
+                        ctx.save();
+                        ctx.translate(r * 0.2, -r * 0.7);
+                        ctx.rotate(0.4);
+                        ctx.fillStyle = '#FFBF00';
+                        ctx.beginPath();
+                        ctx.ellipse(0, 0, r * 0.6, r * 0.35, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Beret nub
+                        ctx.fillRect(-2, -r * 0.35, 4, r * 0.1);
+                        ctx.restore();
+                    }
+
+                    ctx.save();
+                    ctx.translate(faceX, faceY);
+                    
+                    ctx.fillStyle = isDark ? 'white' : 'black';
+                    ctx.strokeStyle = ctx.fillStyle;
+                    ctx.lineWidth = r * 0.06;
+                    ctx.lineCap = 'round';
+
+                    const eyeY = -r * 0.1;
+                    const eyeSpace = r * 0.28;
+                    const eyeR = r * 0.22; // Larger "glasses" style eye
+                    const pupilR = r * 0.05;
+
+                    // Eyes Logic
+                    const drawEyeSet = (isGlassStyle) => {
+                        const drawSingleEye = (ox) => {
+                            ctx.fillStyle = "white";
+                            ctx.beginPath(); ctx.arc(ox, eyeY, isGlassStyle ? eyeR : r*0.12, 0, Math.PI*2); ctx.fill();
+                            if (isGlassStyle) {
+                                ctx.strokeStyle = isDark ? 'white' : 'black';
+                                ctx.stroke();
+                            }
+                            ctx.fillStyle = "black";
+                            ctx.beginPath(); ctx.arc(ox + pupilX, eyeY + pupilY, pupilR, 0, Math.PI*2); ctx.fill();
+                        };
+                        drawSingleEye(-eyeSpace); drawSingleEye(eyeSpace);
+                        if (isGlassStyle) {
+                            ctx.beginPath(); ctx.moveTo(-eyeSpace + eyeR, eyeY); ctx.lineTo(eyeSpace - eyeR, eyeY); ctx.stroke();
+                        }
+                    };
+
+                    if (['glasses', 'beret', 'blush', 'freckles'].includes(trait)) {
+                        drawEyeSet(true);
+                    } else if (trait === 'squint') {
+                        const s = r * 0.08;
+                        [-eyeSpace, eyeSpace].forEach(ox => {
+                            ctx.beginPath(); ctx.moveTo(ox-s, eyeY-s); ctx.lineTo(ox+s, eyeY+s); ctx.stroke();
+                            ctx.beginPath(); ctx.moveTo(ox+s, eyeY-s); ctx.lineTo(ox-s, eyeY+s); ctx.stroke();
+                        });
+                    } else {
+                        drawEyeSet(false);
+                    }
+
+                    // Blush/Freckles
+                    if (trait === 'blush') {
+                        ctx.fillStyle = '#FF69B4';
+                        ctx.globalAlpha = 0.6;
+                        ctx.beginPath(); ctx.arc(-r*0.5, r*0.1, r*0.12, 0, Math.PI*2); ctx.fill();
+                        ctx.beginPath(); ctx.arc(r*0.5, r*0.1, r*0.12, 0, Math.PI*2); ctx.fill();
+                        ctx.globalAlpha = 1.0;
+                    }
+                    if (trait === 'freckles') {
+                        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                        for(let i=0; i<5; i++) {
+                            ctx.beginPath(); ctx.arc(r*0.45 + (i*3), r*0.1 + (i%2*4), 1.5, 0, Math.PI*2); ctx.fill();
+                        }
+                    }
+
+                    // Mouth
+                    const mouthY = r * 0.2;
+                    ctx.fillStyle = isDark ? 'white' : 'black';
+                    if (trait === 'blush') {
+                        ctx.beginPath(); ctx.arc(0, mouthY, r*0.15, 0, Math.PI); ctx.fill();
+                    } else {
+                        ctx.beginPath(); ctx.arc(0, mouthY, r * 0.15, 0, Math.PI, false); ctx.stroke();
+                    }
+
+                    ctx.restore();
+                    ctx.restore();
+                });
+            });
+
+            const mouse = Mouse.create(render.canvas);
+            mouse.element.removeEventListener("mousewheel", mouse.mousewheel);
+            Composite.add(world, MouseConstraint.create(engine, { mouse: mouse, constraint: { stiffness: 0.2, render: { visible: false } } }));
+            Render.run(render);
+            Runner.run(Runner.create(), engine);
+
+            return () => { window.removeEventListener('mousemove', onMouseMove); Render.stop(render); Engine.clear(engine); render.canvas.remove(); };
+        }, []);
+
+        return (
+            <section id="physics-hero" ref={sceneRef}>
+                <div className="absolute top-[25%] left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10 w-full text-center">
+                                <h1 className="text-[12vw] font-medium tracking-tight leading-none" style={{ fontFamily: "'Outfit', sans-serif" }}>
+                Hey! I'm Yi.
+            </h1>
+                </div>
+            </section>
+        );
+    }
+
+    function App() {
+        return (
+            <div className="min-h-screen">
+                <main>
+                    <PuppetPhysicsHero />
+                </main>
+            </div>
+        );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+    </script>
+</body>
+</html>

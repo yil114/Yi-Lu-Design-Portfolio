@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yi Lu | Portfolio</title>
+    <!-- Preconnect to speed up external resources -->
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+    <link rel="dns-prefetch" href="https://unpkg.com"/>
+
+    <!-- Preload all project images immediately before any JS runs -->
+    <link rel="preload" as="image" href="Images/Ricoh-Preview.png" fetchpriority="high"/>
+    <link rel="preload" as="image" href="Images/Volvo-Preview.png" fetchpriority="high"/>
+    <link rel="preload" as="image" href="Images/Library-Preview.png" fetchpriority="high"/>
+
+    <!-- Fonts preloaded inline instead of @import (faster) -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&family=JetBrains+Mono&display=swap"/>
+
+    <!-- Production React — 3x smaller than dev builds -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Font now loaded via <link> above, not @import */
+        
+        :root {
+            --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+            --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+        }
+
+        body { 
+            background-color: #fafafa; 
+            font-family: var(--font-sans);
+            color: #1a1a1a;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        /* Image loading */
+        .case-study-card {
+            background: linear-gradient(90deg, #f0f0f0 25%, #f8f8f8 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            overflow: hidden;
+            transform: translateZ(0); /* force GPU layer — prevents clipping during scroll */
+        }
+        @keyframes shimmer {
+            0%   { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        .case-study-card img {
+            transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s ease;
+            opacity: 0;
+            will-change: transform;
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center top; /* anchors to top so scroll-in looks clean */
+        }
+        .case-study-card img.loaded {
+            opacity: 1;
+        }
+        .case-study-card:has(img.loaded) {
+            animation: none;
+            background: none;
+        }
+        .case-study-card:hover img {
+            transform: scale(1.04);
+        }
+    </style>
+    <link rel="preload" as="image" href="Images/Ricoh-Preview.png"/>
+    <link rel="preload" as="image" href="Images/Volvo-Preview.png"/>
+    <link rel="preload" as="image" href="Images/Library-Preview.png"/>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+    const { useState } = React;
+
+    function NavBar() {
+        return (
+            <nav className="w-full flex items-center justify-between px-6 py-8 md:px-12 bg-[#fafafa]/90 backdrop-blur-md sticky top-0 z-50">
+                <div className="flex flex-col">
+                    <span className="text-[15px] font-bold tracking-[0.05em] text-[#1a1a1a] uppercase">Yi Lu</span>
+                    <span className="text-[11px] font-light tracking-[0.1em] text-[#9ca3af] uppercase mt-1">Designer & Researcher</span>
+                </div>
+
+                <div className="hidden md:flex items-center space-x-12 absolute left-1/2 transform -translate-x-1/2">
+                    {['Work', 'AI Design', 'About'].map((item) => (
+                        <a
+                            key={item}
+                            href={item === 'About' ? 'about.html' : item === 'AI Design' ? 'aidesign.html' : `#${item.toLowerCase()}`}
+                            className="text-[13px] font-light tracking-[0.08em] text-[#9ca3af] hover:text-[#1a1a1a] transition-colors duration-300 uppercase"
+                        >
+                            {item}
+                        </a>
+                    ))}
+                </div>
+
+                <div className="flex items-center space-x-6">
+                    <a href="https://www.linkedin.com/in/yi-lu-b014b31a7/" target="_blank" rel="noopener noreferrer" className="text-[#9ca3af] hover:text-[#1a1a1a] transition-colors duration-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg>
+                    </a>
+                </div>
+            </nav>
+        );
+    }
+
+    function InteractiveExperiment() {
+        return (
+            <section className="w-full h-[85vh] bg-white border-b border-gray-100 overflow-hidden">
+                <iframe 
+                    src="bubble-interaction.html" 
+                    className="w-full h-full border-none"
+                    title="Bubble Physics Interaction"
+                    scrolling="no"
+                />
+            </section>
+        );
+    }
+
+    function CaseStudySection() {
+        return (
+            <div className="px-6 py-16 md:px-12 md:py-24" id="work">
+                <div className="max-w-[1600px] mx-auto mb-12 flex justify-between items-end">
+                    <h2 className="text-3xl md:text-4xl tracking-tight font-light">Selected Works</h2>
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-gray-400 pb-1">2024 — 2026</span>
+                </div>
+
+                <div className="max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 md:gap-16">
+                    
+                    {/* Project 1: Ricoh USA - Full Bleed */}
+                    <a href="ricoh_casestudy.html" className="group block no-underline">
+                        <div className="case-study-card w-full aspect-[4/3] rounded-sm relative">
+                            <img 
+                                src="Images/Ricoh-Preview.png" 
+                                alt="Ricoh USA SaaS Redesign"
+                                className="w-full h-full"
+                                loading="eager"
+                                decoding="async"
+                                onLoad={e => e.target.classList.add('loaded')}
+                            />
+                        </div>
+                        <div className="mt-6 flex justify-between items-start px-2">
+                            <div>
+                                <h3 className="text-lg font-medium text-[#1a1a1a]">Ricoh USA</h3>
+                                <p className="text-[13px] text-gray-500 mt-1 font-light italic">UX Design & Research Intern</p>
+                            </div>
+                            <span className="text-[10px] border border-gray-200 px-3 py-1 rounded-full uppercase tracking-wider text-gray-500 font-mono">B2B SaaS</span>
+                        </div>
+                    </a>
+
+                    {/* Project 2: Volvo Group - Full Bleed */}
+                    <a href="volvo-smartwatch-case-study.html" className="group block no-underline">
+                        <div className="case-study-card w-full aspect-[4/3] rounded-sm relative">
+                            <img 
+                                src="Images/Volvo-Preview.png" 
+                                alt="Volvo Smartwatch Concept"
+                                className="w-full h-full"
+                                loading="eager"
+                                decoding="async"
+                                onLoad={e => e.target.classList.add('loaded')}
+                            />
+                        </div>
+                        <div className="mt-6 flex justify-between items-start px-2">
+                            <div>
+                                <h3 className="text-lg font-medium text-[#1a1a1a]">Volvo Group</h3>
+                                <p className="text-[13px] text-gray-500 mt-1 font-light italic">UX Design Intern</p>
+                            </div>
+                            <span className="text-[10px] border border-gray-200 px-3 py-1 rounded-full uppercase tracking-wider text-gray-500 font-mono">Wearable</span>
+                        </div>
+                    </a>
+
+                     {/* Project 3: Library - Full Bleed */}
+                    <a href="volvo-smartwatch-case-study.html" className="group block no-underline">
+                        <div className="case-study-card w-full aspect-[4/3] rounded-sm relative">
+                            <img 
+                                src="Images/Library-Preview.png" 
+                                alt="Library Full Bleed Concept"
+                                className="w-full h-full"
+                                loading="eager"
+                                decoding="async"
+                                onLoad={e => e.target.classList.add('loaded')}
+                            />
+                        </div>
+                        <div className="mt-6 flex justify-between items-start px-2">
+                            <div>
+                                <h3 className="text-lg font-medium text-[#1a1a1a]">UC San Diego Library</h3>
+                                <p className="text-[13px] text-gray-500 mt-1 font-light italic">Lead UX Design</p>
+                            </div>
+                            <span className="text-[10px] border border-gray-200 px-3 py-1 rounded-full uppercase tracking-wider text-gray-500 font-mono">Accessibility</span>
+                        </div>
+                    </a>
+
+                </div>
+            </div>
+        );
+    }
+
+    function App() {
+        return (
+            <div className="min-h-screen flex flex-col">
+                <NavBar />
+                <main className="flex-grow">
+                    <InteractiveExperiment />
+                    <CaseStudySection />
+                </main>
+                <footer className="px-6 py-12 md:px-12 text-center text-[10px] uppercase tracking-[0.3em] text-gray-300 font-mono">
+                    &copy; 2026 Yi Lu
+                </footer>
+            </div>
+        );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+    </script>
+</body>
+</html>

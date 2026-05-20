@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yi Lu | Interaction Grid</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+        
+        body { 
+            background-color: #ffffff; 
+            font-family: 'JetBrains+Mono', monospace;
+            color: #b5b5b5;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            border-top: 1px solid #eeeeee;
+            border-left: 1px solid #eeeeee;
+            width: fit-content;
+        }
+
+        .cell {
+            width: 120px; /* Increased from 80px */
+            height: 120px; /* Increased from 80px */
+            border-right: 1px solid #eeeeee;
+            border-bottom: 1px solid #eeeeee;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+
+        .cell-number {
+            position: absolute;
+            top: 6px;
+            left: 8px;
+            font-size: 12px; /* Slightly increased for visibility */
+            color: #d1d1d1;
+        }
+
+        .dark-cell {
+            background-color: #1a1a1a;
+            border-radius: 8px;
+            margin: 6px; /* Slightly adjusted margin for bigger boxes */
+            width: calc(100% - 12px);
+            height: calc(100% - 12px);
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .face-reveal {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+
+        .matched-text {
+            color: #1a1a1a;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const ATTRIBUTES = [
+        { label: "Yi is a Designer", img: "🎨" },
+        { label: "Yi is a Vibe Coder", img: "💻" },
+        { label: "Yi is a PM", img: "🚀" },
+        { label: "Yi is a Human", img: "✨" }
+    ];
+
+    const darkIndices = [3, 9, 13, 14, 23, 24, 25, 30, 32, 33, 35, 37, 39, 43];
+    const pairs = [...ATTRIBUTES, ...ATTRIBUTES, ...ATTRIBUTES, ...ATTRIBUTES].slice(0, darkIndices.length);
+    const shuffledPairs = pairs.sort(() => Math.random() - 0.5);
+
+    function CrosswordPortfolio() {
+        const [tiles, setTiles] = useState(
+            Array.from({ length: 45 }, (_, i) => ({
+                id: i,
+                isDark: darkIndices.includes(i + 1),
+                content: darkIndices.includes(i + 1) ? shuffledPairs[darkIndices.indexOf(i + 1)] : null,
+                isFlipped: false,
+                isMatched: false
+            }))
+        );
+        const [selected, setSelected] = useState([]);
+        const [message, setMessage] = useState("CLICK THE DARK CELLS");
+        const [isGameComplete, setIsGameComplete] = useState(false);
+
+        // Check if all dark tiles are matched
+        useEffect(() => {
+            const darkTiles = tiles.filter(t => t.isDark);
+            if (darkTiles.length > 0 && darkTiles.every(t => t.isMatched)) {
+                setIsGameComplete(true);
+            }
+        }, [tiles]);
+
+        const handleTileClick = (tile) => {
+            if (!tile.isDark || tile.isMatched || selected.length === 2 || selected.includes(tile)) return;
+
+            setTiles(prev => prev.map(t => t.id === tile.id ? { ...t, isFlipped: true } : t));
+            const newSelected = [...selected, tile];
+            setSelected(newSelected);
+
+            if (newSelected.length === 2) {
+                if (newSelected[0].content.label === newSelected[1].content.label) {
+                    setTimeout(() => {
+                        setTiles(prev => prev.map(t => 
+                            t.content?.label === tile.content.label ? { ...t, isMatched: true } : t
+                        ));
+                        setMessage(tile.content.label);
+                        setSelected([]);
+                    }, 400);
+                } else {
+                    setTimeout(() => {
+                        setTiles(prev => prev.map(t => !t.isMatched ? { ...t, isFlipped: false } : t));
+                        setSelected([]);
+                    }, 700);
+                }
+            }
+        };
+
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-[#ffffff]">
+                <div className={`transition-all duration-1000 ${isGameComplete ? 'opacity-20 scale-95 blur-sm' : 'opacity-100'}`}>
+                    <div className="grid-container">
+                        {tiles.map((tile) => (
+                            <div key={tile.id} className="cell">
+                                <span className="cell-number">{tile.id + 1}</span>
+                                {tile.isDark && !tile.isMatched ? (
+                                    <div 
+                                        onClick={() => handleTileClick(tile)}
+                                        className={`dark-cell flex items-center justify-center transition-all duration-500 ${
+                                            tile.isFlipped ? 'bg-gray-50 scale-105 shadow-inner' : 'bg-[#1a1a1a]'
+                                        }`}
+                                    >
+                                        {/* Updated to text-4xl to fit the larger boxes nicely */}
+                                        {tile.isFlipped ? <span className="text-4xl">{tile.content.img}</span> : ""}
+                                    </div>
+                                ) : null}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Final Reveal Overlay */}
+                <div className={`fixed inset-0 flex flex-col items-center justify-center transition-all duration-1000 pointer-events-none ${isGameComplete ? 'opacity-100' : 'opacity-0'}`}>
+                    <div className={isGameComplete ? 'pointer-events-auto text-center' : ''}>
+                        <h2 className="text-4xl italic text-black mb-6 tracking-tight">Welcome to Yi's Design Portfolio</h2>
+                        <button className="px-10 py-3 border border-black text-black hover:bg-black hover:text-white transition-all duration-500 uppercase text-[10px] tracking-[0.3em]">
+                            Enter Experience
+                        </button>
+                    </div>
+                </div>
+                
+                {!isGameComplete && (
+                    <div className="mt-12 text-[10px] tracking-[0.2em] uppercase text-gray-400 animate-pulse">
+                        {message}
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<CrosswordPortfolio />);
+</script>
+</body>
+</html>
